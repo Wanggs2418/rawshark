@@ -5,6 +5,7 @@
 #include <vector>
 #include <string>
 #include <sstream>
+#include <format>
 #include <windows.h>
 #include "rapidjson/document.h"
 #include "rapidjson/writer.h"
@@ -25,10 +26,15 @@ struct Packet {
 void parseLine(std::string line, Packet& packet);
 
 //将Packet对象转换为JSON打印输出
-void printPacket(const Packet& packet);
+void toJson(const Packet& packet);
+
+//将Packet结构体转换为字符串
+//std::string toString(Packet& packet);
+void toString(Packet& packet);
 
 int main()
 {
+    //设置控制台输出编码
     SetConsoleOutputCP(CP_UTF8);
     //创建管道，r-从子进程读取数据
     const char* command = "E:/Wireshark4.2.6/Wireshark/tshark -r C:/Users/Wanggs/capture.pcap -T fields -e frame.number -e frame.time -e ip.src -e ip.dst -e _ws.col.Protocol -e _ws.col.Info";
@@ -51,20 +57,33 @@ int main()
 
 	// C++11引入的新式for循环，通过auto关键子自动推断类型
     for (auto& p : packets) {
-		printPacket(p);
-        printf("frame_number: %d time: %s src_ip: %s dst_ip: %s protocol: %s info: %s\n",
+        /*printf("frame_number: %d time: %s src_ip: %s dst_ip: %s protocol: %s info: %s\n",
             p.frame_number,
             p.time.c_str(),
             p.src_ip.c_str(),
             p.dst_ip.c_str(),
             p.protocol.c_str(),
-            p.info.c_str());
+            p.info.c_str());*/
+        //std::cout << toString(p) << std::endl;
+        toString(p);
+		//printPacket(p);
+
     }
+
+    //std::wcout << L"Json如下：===================================\t" << std::endl;
+    std::cout << reinterpret_cast<const char*>(u8"Json如下：\t") << std::endl;
+   
+    //转化为json
+    for (auto& p : packets) {
+        toJson(p);
+    }
+     
     //关闭管道，获取子进程的退出状态
     _pclose(pipe);
     return 0;
 }
 
+//将tshark输出解析成packet结构体
 void parseLine(std::string line, Packet& packet) {
     //将行末尾的换行符去掉
     if (line.back() == '\n') {
@@ -92,7 +111,21 @@ void parseLine(std::string line, Packet& packet) {
 
 }
 
-void printPacket(const Packet& packet) {
+//将Packet结构体转换为字符串
+void toString(Packet& packet) {
+    std::string s = std::format("frame_number:{0}\t time:{1}\t src_ip:{2}\t dst_ip:{3}\t protocol:{4}\t info:{5}",
+        packet.frame_number,
+        packet.time,
+        packet.src_ip,
+        packet.dst_ip,
+        packet.protocol,
+        packet.info    
+    );
+    std::cout << s << std::endl;
+}
+
+
+void toJson(const Packet& packet) {
     //构建JSON对象
     rapidjson::Document pktObj;
     rapidjson::Document::AllocatorType& allocator = pktObj.GetAllocator();

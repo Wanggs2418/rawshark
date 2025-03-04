@@ -21,11 +21,68 @@
 
 将开源库复制到 `include` 文件夹下： `D:\Visual Studio2022\VC\Tools\MSVC\14.43.34808\include`
 
-## C++ 基础
+### 0.1 C++ 基础
 
+- `main` 函数的返回类型必须是 `int`；
 
+- 注意语句末位以分号结尾；
+- `iostream` 库包含两个基础类型 `istream` 和 `ostream`；
+- 标识符（identifier） 由字母，数字，下划线组成，对大小写敏感；
+- 类一般定义在头文件中，且头文件名和类的名字一样；
 
+```c++
+//1.定义在std命名空间中，避免名字定义冲突
+//作用域运算符::
+std::cin >> v1 >> v2;
+//等价于
+std:cin >> v1;
+std:cin >> v2;
 
+//通过声明，直接使用标准库中的名字
+#include <iostream>
+using std:cin;
+using std:cout;
+using std:endl;
+
+//2.单行和多行注释
+/*
+*多行注释
+*/
+
+//3.类
+//点运算符.,调用运算符()
+Student.name()
+    
+//4.类型修饰符（*，&）指针和引用
+int *p1 = nullptr;
+void* //存放任意类型对象的地址
+    
+//5.类型别名
+typedef double wages; //传统方法
+using SI = Sales_item;//新规定
+```
+
+### 0.2 Visual Studio 2022
+
+注意安装时勾选 `C++桌面` 方便后续存在 `C++` 控制台模块，注意**多勾选会额外占用空间**，用哪个就选择哪个即可。
+
+<img src="img/01.jpg" style="zoom:50%;" />
+
+**Visual Studio 2022 卸载后面两项不能改盘问题解决办法**
+
+1. `wint+R`，输入 `regedit`
+
+2. 找到计算机 `\HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\VisualStudio\Setup`
+
+3. 右键 `CachePath` 和 `SharedInstallationPath`，把这两个删除掉
+
+**基础设置**
+
+工具 >> 选项 >> 字体和颜色，设置字体为 `Consolas`。
+
+`ctrl+k,ctrl+f`：自动格式化；
+
+`ctrl+e,ctrl+w`：自动换行；
 
 
 
@@ -128,20 +185,6 @@ tshark -r capture.pcap -q -z io,phs
 > [内容讲解](https://articles.zsxq.com/id_kvpzkl2s5xp8.html)
 
 ### 内容
-
-#### Visual Studio 2022
-
-注意安装时勾选 `C++桌面` 方便后续存在 `C++` 控制台模块，注意**多勾选会额外占用空间**，用哪个就选择哪个即可。
-
-<img src="img/01.jpg" style="zoom:50%;" />
-
-**Visual Studio 2022 卸载后面两项不能改盘问题解决办法**
-
-1. `wint+R`，输入 `regedit`
-
-2. 找到计算机 `\HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\VisualStudio\Setup`
-
-3. 右键 `CachePath` 和 `SharedInstallationPath`，把这两个删除掉
 
 #### rawshark 创建步骤
 
