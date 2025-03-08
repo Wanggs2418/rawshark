@@ -21,7 +21,7 @@
 
 将开源库复制到 `include` 文件夹下： `D:\Visual Studio2022\VC\Tools\MSVC\14.43.34808\include`
 
-### 0.1 C++ 基础
+### C++ 基础
 
 - `main` 函数的返回类型必须是 `int`；
 
@@ -62,7 +62,32 @@ typedef double wages; //传统方法
 using SI = Sales_item;//新规定
 ```
 
-### 0.2 Visual Studio 2022
+#### 数据类型
+
+```cpp
+#include <stdint.h> // 标准整数类型定义
+
+
+```
+
+#### 常用函数解读
+
+- `std::stoi`： 是 C++ 标准库中的一个函数，用于**将 `std::string` 类型的字符串转换为 `int` 类型**的整数。它定义在 `<string>`  头文件中；
+
+- `c_str()`：`command.c_str()` 将 `command` 对象**（一个 `std::string` 类型的字符串）转换为 `C` 风格的字符串（ `const char*` 类型）**;
+
+  ```cpp
+  //1.std::stoi
+  
+  
+  //2.c_str()
+  std::string command = tshark_loc + " -r " + pcap_file + " " + fields;
+  FILE* pipe = _popen(command.c_str(), "r");
+  ```
+
+
+
+### Visual Studio 2022
 
 注意安装时勾选 `C++桌面` 方便后续存在 `C++` 控制台模块，注意**多勾选会额外占用空间**，用哪个就选择哪个即可。
 
@@ -86,7 +111,7 @@ using SI = Sales_item;//新规定
 
 
 
-## 第 1 课 Wireshark与 Tshark使用指南
+## 1. Wireshark与 Tshark使用指南
 
 > [内容讲解](https://articles.zsxq.com/id_4rjqwb3pd31n.html)
 
@@ -168,7 +193,7 @@ ipv6.addr == 2001:250:fe01:130:a8c0:25c2:7d05:1398
 tshark -D
 # 选择合适的网卡并抓取1000个数据包
 # 文件默认保存位置为：C:\Users\Wanggs
-tshark -i 4 -c 200 -w capture.pcap
+tshark -i 4 -c 50 -w capture.pcap
 # 解析capture.pcap，筛选出所有TCP协议的数据包
 tshark -r capture.pcap -Y "tcp"
 # 统计capture.pcap中各个协议的数据包流量
@@ -180,7 +205,7 @@ tshark -r capture.pcap -q -z io,phs
 
 
 
-## 第 2 课 使用 tshark 分析离线 pcap 文件
+## 2. 使用 tshark 分析离线 pcap 文件
 
 > [内容讲解](https://articles.zsxq.com/id_kvpzkl2s5xp8.html)
 
@@ -190,7 +215,7 @@ tshark -r capture.pcap -q -z io,phs
 
 项目名：`rawshark`
 
-**1.通过管道读取 tsahrk 输出的内容**
+**通过管道读取 tsahrk 输出的内容**
 
 进程间通信（Inter-Process Communication, IPC）：指**不同进程之间交换数据**的机制。在 OS 中，常见的 IPC 方式包括：
 
@@ -204,9 +229,245 @@ tshark -r capture.pcap -q -z io,phs
 
 本项目使用**管道**让 tshark 的输出直接传递到 C/C++ 程序进行解析。借助 `popen` 函数（`C` 语言标准库提供的函数），创建一个管道并启用一个子进程，在**父进程和子进程之间建立通信通道**。
 
+### 作业
+
+> [第二课作业参考](https://t.zsxq.com/TXlaO)
+
+#### 注意点
+
+`tshark` 提取的字段数明确，特别是从示例 6 字段变化为 8 字段，需增设 `-e tcp.srcport`，`-e tcp.dstport`
+
+```cpp
+const char* command = "E:/Wireshark4.2.6/Wireshark/tshark -r C:/Users/Wanggs/demo.pcap -T fields -e frame.number -e frame.time -e ip.src -e tcp.srcport -e ip.dst -e tcp.dstport -e _ws.col.Protocol -e _ws.col.Info";
+```
+
+**C++ 字符串变化 c_str(): std::string >> const char* **
+
+```cpp
+//command.c_str()将command对象（一个std::string类型的字符串）转换为C风格的字符串（const char* 类型）
+FILE* pipe = _popen(command.c_str(), "r");
+```
+
+**为什么有些行IP地址是空的呢？**
+
+1、在 `tshark` 中，`-e ip.src -e ip.dst` 参数输出的是 IPv4 的源 IP 和目的 IP，而如果遇到的是一个 IPv6 的数据报文，tshark 输出的就会变成空了。想要解决这个问题，需同时指定`-e ip.src -e ipv6.src -e ip.dst ipv6.dst`。然后在解析的时候，两个字段都要解析，哪个不为空，就取哪个作为数据包的源地址。
+
+2、有些数据包本身就没有网络层的，比如 `ARP`，当然也就没有IP地址了。
+
+**改进后的 `tshark` 参数指令**
+
+```cmd
+std::string command = "/Applications/Wireshark.app/Contents/MacOS/tshark -r " + packet_file + " -T fields -e frame.number -e frame.time -e ip.src -e ipv6.src -e ip.dst -e ipv6.dst -e tcp.srcport -e udp.srcport -e tcp.dstport -e udp.dstport -e _ws.col.Protocol -e _ws.col.Info";
+```
+
+#### 主程序
+
+```cpp
+// rawsahrk.cpp : 此文件包含 "main" 函数。程序执行将在此处开始并结束。
+//注意将开源库复制到 `include` 文件夹下： `D:\Visual Studio2022\VC\Tools\MSVC\14.43.34808\include`
+#include <iostream>
+#include <cstdio>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <format>
+#include <windows.h>
+#include "rapidjson/document.h"
+#include "rapidjson/writer.h"
+#include "rapidjson/stringbuffer.h"
+#include "rapidjson/prettywriter.h"
+
+//定义数据包结构体
+struct Packet {
+    int frame_number = -1;   //数据包编号
+    std::string time;   //数据包时间戳
+    std::string src_ip; //源IP地址
+    int src_port = -1;
+    std::string dst_ip; //目的IP
+    int dst_port = -1;
+    std::string protocol;   //协议
+    std::string info;   //数据包概要信息
+};
+
+//字符串转数字
+int port2Int(std::string port);
+
+//编写解析函数，针对输出的每一行，解析为一个 packet 结构体
+void parseLine(std::string line, Packet& packet);
+
+//将Packet对象转换为JSON打印输出
+void toJson(const Packet& packet);
+
+//将Packet结构体转换为字符串
+void toString(Packet& packet);
+
+int main()
+{
+    //设置控制台输出编码
+    SetConsoleOutputCP(CP_UTF8);
+    //创建管道，r-从子进程读取数据
+	//注意tshark提取的字段数，>=8，否则输出空字段
+    const char* command = "E:/Wireshark4.2.6/Wireshark/tshark -r C:/Users/Wanggs/demo.pcap -T fields -e frame.number -e frame.time -e ip.src -e tcp.srcport -e ip.dst -e tcp.dstport -e _ws.col.Protocol -e _ws.col.Info";
+    FILE* pipe = _popen(command, "r");
+    if (!pipe) {
+        std::cerr << "tshark failed" << std::endl;
+        return 1;
+    }
+    
+	std::vector<Packet> packets;
+    char buffer[1024];
+    
+    //fgets标准库函数，定义在stdio.h中，从文件流中读取一行文本数据
+    while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
+        //std::cout << buffer;
+		Packet packet;
+		parseLine(buffer, packet);
+		packets.push_back(packet);
+    }
+
+	// C++11引入的新式for循环，通过auto关键子自动推断类型
+    for (auto& p : packets) {
+        toString(p);
+    }
+
+    //std::wcout << L"Json如下：===================================\t" << std::endl;
+    std::cout << reinterpret_cast<const char*>(u8"Json如下：\t") << std::endl;
+   
+    //转化为json
+    for (auto& p : packets) {
+        toJson(p);
+    }
+     
+    //关闭管道，获取子进程的退出状态
+    _pclose(pipe);
+
+    std::cout << reinterpret_cast<const char*>(u8"src_ip或dst_ip为空的数据包：\t") << std::endl;
+
+	//打印dst_ip和src_ip为空的数据包
+    for (auto& p : packets) {
+		if (p.dst_ip.empty() || p.src_ip.empty()) {
+			toString(p);
+		}
+    }
+
+    return 0;
+}
+
+//字符串转数字
+int port2Int(std::string port) {
+    try {
+        return std::stoi(port);
+    }
+	catch (std::exception& e) {
+		return -1;
+	}
+}
+
+
+//将tshark输出解析成packet结构体
+void parseLine(std::string line, Packet& packet) {
+    //将行末尾的换行符去掉
+    if (line.back() == '\n') {
+        line.pop_back();
+    }
+    //stringstream是C++标准库中的一个类，允许把字符串当作输入输出流来处理
+    std::stringstream ss(line);
+    std::string field;
+    std::vector<std::string> fields;
+
+    // getline是C++提供的函数，用于从输入流中读取一行数据
+    while (std::getline(ss, field, '\t')) {
+        fields.push_back(field);
+    }
+
+    // 拆分字段保存到vector容器中，最后按照顺序赋值Packet 各个字段
+    // 如果<8，则会输出空的字段
+    if (fields.size() >=8) {
+        packet.frame_number = port2Int(fields[0]);
+        packet.time = fields[1];
+        packet.src_ip = fields[2];
+		packet.src_port = port2Int(fields[3]);
+        packet.dst_ip = fields[4];
+		packet.dst_port = port2Int(fields[5]);
+        packet.protocol = fields[6];
+        packet.info = fields[7];
+    }
+
+}
+
+//将Packet结构体转换为字符串
+void toString(Packet& packet) {
+    std::string s = std::format(
+        "frame_number:{0}\t time:{1}\t src_ip:{2}\t scr_port:{3}\t dst_ip:{4}\t dst_port:{5}\t protocol:{6}\t info:{7}",
+        packet.frame_number,
+        packet.time,
+        packet.src_ip,
+        packet.src_port,
+        packet.dst_ip,
+		packet.dst_port,
+        packet.protocol,
+        packet.info    
+    );
+    std::cout << s << std::endl;
+}
+
+//将Packet对象转换为JSON打印输出
+void toJson(const Packet& packet) {
+    //构建JSON对象
+    rapidjson::Document pktObj;
+    rapidjson::Document::AllocatorType& allocator = pktObj.GetAllocator();
+
+    //设置JSON为Object对象类型
+	pktObj.SetObject();
+
+    //添加JSON字段
+	pktObj.AddMember("frame_number", packet.frame_number, allocator);
+	pktObj.AddMember("timestamp", rapidjson::Value(packet.time.c_str(), allocator), allocator);
+	pktObj.AddMember("src_ip", rapidjson::Value(packet.src_ip.c_str(), allocator), allocator);
+	pktObj.AddMember("src_port", packet.src_port, allocator);
+	pktObj.AddMember("dst_ip", rapidjson::Value(packet.dst_ip.c_str(), allocator), allocator);
+	pktObj.AddMember("dst_port", packet.dst_port, allocator);
+	pktObj.AddMember("protocol", rapidjson::Value(packet.protocol.c_str(), allocator), allocator);
+	pktObj.AddMember("info", rapidjson::Value(packet.info.c_str(
+    ), allocator), allocator);
+	
+    //序列化为 JSON 字符串
+	rapidjson::StringBuffer buffer;
+	rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+	pktObj.Accept(writer);
+
+    //打印JSON输出
+	std::cout << buffer.GetString() << std::endl;
+}
+```
 
 
 
+## 3. PCAP 文件格式
+
+> [内容讲解](https://articles.zsxq.com/id_bl6ttgpfokv3.html)
+
+### 内容
+
+**获取数据包原始的十六进制数据：**
+
+十六进制原始数据存放在原始 `pcap` 文件中，用 `Packet` 结构体中记录数据包的位置，到时候需要哪个数据包的十六进制数据，临时再去读就可以了。
+
+#### PCAP 文件格式
+
+`PCAP（Packet Capture）` 是一种广泛使用的文件格式，专门用于存储网络数据包。它由 `libpcap（Linux/macOS）`和 `WinPcap（Windows）` 库支持，通常用于网络分析工具，如 `Wireshark、tshark` 等。
+
+<img src="img/02.jpg" style="zoom:60%;" />
+
+### 作业
+
+> [作业参考](https://t.zsxq.com/3xe5s)
+
+```cmd
+# 注意仅以.pcap后缀结尾的不一定是pcap格式
+# 一定要以 -F pcap 的方式保存
+tshark -i 4 -c 10 -F pcap -w demo1.pcap
+```
 
 
 
