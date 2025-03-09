@@ -67,7 +67,7 @@ struct PacketHeader {
 int port2Int(std::string port);
 
 //编写解析函数，针对输出的每一行，解析为一个 packet 结构体
-void parseLine(std::string line, Packet& packet);
+bool parseLine(std::string line, Packet& packet);
 
 //将Packet对象转换为JSON打印输出
 void toJson(const Packet& packet);
@@ -104,15 +104,17 @@ int main()
     
     //fgets标准库函数，定义在stdio.h中，从文件流中读取一行文本数据
     while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
-        //std::cout << buffer;
 		Packet packet;
-		parseLine(buffer, packet);
 
-        // 计算文件偏移
-		packet.file_offset = file_offset + sizeof(PacketHeader);
-		file_offset += packet.cap_len + sizeof(PacketHeader);
-
-		packets.push_back(packet);
+        if (parseLine(buffer, packet)) {
+            // 计算文件偏移
+            packet.file_offset = file_offset + sizeof(PacketHeader);
+            file_offset += packet.cap_len + sizeof(PacketHeader);
+            packets.push_back(packet);
+        }
+        else {
+			assert(false);
+        }
     }
 
 	// C++11引入的新式for循环，通过auto关键子自动推断类型
@@ -132,26 +134,14 @@ int main()
 		printf("\n");
     }
 
-    //std::wcout << L"Json如下：===================================\t" << std::endl;
     //std::cout << reinterpret_cast<const char*>(u8"Json如下：\t") << std::endl;
-   
-    //转化为json
-    /*for (auto& p : packets) {
+    //转化为json输出
+    for (auto& p : packets) {
         toJson(p);
-    }*/
+    }
      
     //关闭管道，获取子进程的退出状态
     _pclose(pipe);
-
-    //std::cout << reinterpret_cast<const char*>(u8"src_ip或dst_ip为空的数据包：\t") << std::endl;
-    
-	//打印dst_ip和src_ip为空的数据包
-    /*for (auto& p : packets) {
-		if (p.dst_ip.empty() || p.src_ip.empty()) {
-			toString(p);
-		}
-    }*/
-
     return 0;
 }
 
@@ -193,7 +183,7 @@ int port2Int(std::string port) {
 
 
 //将tshark输出解析成packet结构体
-void parseLine(std::string line, Packet& packet) {
+bool parseLine(std::string line, Packet& packet) {
     //将行末尾的换行符去掉
     if (line.back() == '\n') {
         line.pop_back();
@@ -208,7 +198,7 @@ void parseLine(std::string line, Packet& packet) {
         fields.push_back(field);
     }*/
 
-    // 自己实现字符串拆分
+    // 实现字符串拆分,避免字段数量不足导致数据包无法对齐
     size_t start = 0, end;
     while ((end = line.find('\t', start)) != std::string::npos) {
         fields.push_back(line.substr(start, end - start));
@@ -232,6 +222,12 @@ void parseLine(std::string line, Packet& packet) {
         }
         packet.protocol = fields[11];
         packet.info = fields[12];
+		return true;
+    }
+    else
+	{
+		std::cerr << "parse line failed" << std::endl;
+		return false;
     }
 }
 
@@ -273,6 +269,7 @@ void toJson(const Packet& packet) {
 	pktObj.AddMember("protocol", rapidjson::Value(packet.protocol.c_str(), allocator), allocator);
 	pktObj.AddMember("info", rapidjson::Value(packet.info.c_str(
     ), allocator), allocator);
+	pktObj.AddMember("file_offset", packet.file_offset, allocator);
 	
     //序列化为 JSON 字符串
 	rapidjson::StringBuffer buffer;

@@ -67,7 +67,6 @@ using SI = Sales_item;//新规定
 ```cpp
 #include <stdint.h> // 标准整数类型定义
 
-
 ```
 
 #### 常用函数解读
@@ -101,13 +100,21 @@ using SI = Sales_item;//新规定
 
 3. 右键 `CachePath` 和 `SharedInstallationPath`，把这两个删除掉
 
-**基础设置**
+#### 快捷方式
 
 工具 >> 选项 >> 字体和颜色，设置字体为 `Consolas`。
 
 `ctrl+k,ctrl+f`：自动格式化；
 
 `ctrl+e,ctrl+w`：自动换行；
+
+#### 外部包的引入
+
+**方法1：**将开源库复制到 `include` 文件夹下 `D:\Visual Studio2022\VC\Tools\MSVC\14.43.34808\include`
+
+**方法2：**在 VS2022 中设置一下附加路径，使得 `include` 指令可以找到对应的文件。项目 >> 属性
+
+<img src="img/03.jpg" style="zoom:60%;" />
 
 
 
@@ -459,6 +466,31 @@ void toJson(const Packet& packet) {
 
 <img src="img/02.jpg" style="zoom:60%;" />
 
+**真实的网络数据包字节流，以十六进制形式存储**
+
+```cpp
+// PCAP Gloabal Header
+struct PcapHeader {
+    uint32_t magic_number;	// 标识文件格式，无符号32位整数,0xa1b2c3d4大端
+    uint16_t version_major;	// PCAP文件版本号，一般为2.4
+    uint16_t version_minor;
+    int32_t thiszone;		// 时区偏移，一般为0，有符号32位整数
+    uint32_t sigfigs;		// 时间戳精度，通常为0
+    uint32_t snaplen;		// 捕获数据包最大长度，通常为65535
+    uint32_t network;		// 链路层类型，0x01表示以太网
+};
+
+// PCAP Packet Header
+struct PacketHeader {
+    uint32_t ts_sec;	// 数据包捕获的时间戳(s)
+    uint32_t ts_usec;	// 数据包捕获的时间戳(μs)微秒
+    uint32_t caplen;	// 捕获的数据包长度
+    uint32_t len;		// 数据包原始长度
+};
+```
+
+
+
 ### 作业
 
 > [作业参考](https://t.zsxq.com/3xe5s)
@@ -467,13 +499,44 @@ void toJson(const Packet& packet) {
 # 注意仅以.pcap后缀结尾的不一定是pcap格式
 # 一定要以 -F pcap 的方式保存
 tshark -i 4 -c 10 -F pcap -w demo1.pcap
+
+bool readPacketHex(const std::string& filePath, uint32_t offset, uint32_t length, std::vector<unsigned char> &buffer) {
+	std::ifstream file(filePath, std::ios::binary);
+	if (!file) {
+		std::cerr << "open file failed" << std::endl;
+		return false;
+	}
+
+	file.seekg(offset, std::ios::beg);
+	if (!file) {
+		std::cerr << "seek file failed" << std::endl;
+		return false;
+	}
+
+	buffer.resize(length);
+    file.read(reinterpret_cast<char*>(buffer.data()), length);
+	if (!file) {
+		std::cerr << "read file failed" << std::endl;
+		return false;
+	}
+
+	return true;
+}
 ```
 
 
 
+## 4. IP 属地查询
 
+> [内容讲解](https://articles.zsxq.com/id_p0o2v83fjgs3.html)
 
+目前行业里实现这个功能主要有两个方案：
 
+1. 基于开源的数据库 [`ip2region`](https://github.com/lionsoul2014/ip2region)，并且提供了 `C++` 的开发接口，但是里面的数据有一些过时，有些IP的地理位置可能定位是错的；
+
+2. 基于商业数据库，比如知名的有纯真数据库，并且纯真数据库也提供了可以免费使用的版本。
+
+`ip2region`: 是一个离线IP地址定位库和IP定位数据管理框架，10微秒级别的查询效率，提供了众多主流编程语言的 `xdb` 数据生成和查询客户端实现。
 
 
 
