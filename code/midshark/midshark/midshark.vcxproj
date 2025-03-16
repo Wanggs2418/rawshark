@@ -21,8 +21,8 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{b1323e7f-e99d-49fc-9146-6f6e448380c0}</ProjectGuid>
-    <RootNamespace>practiceexample</RootNamespace>
+    <ProjectGuid>{b1ddadce-6b62-4d36-9284-bff8cb3126b1}</ProjectGuid>
+    <RootNamespace>midshark</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -104,6 +104,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>E:\03CS_learning\04CS_Reverse_Engineering\wireshark\rawshark\code\midshark\midshark\third_library;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -127,7 +129,22 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="practice_example.cpp" />
+    <ClCompile Include="ip2region_util.cpp" />
+    <ClCompile Include="midshark.cpp" />
+    <ClCompile Include="third_library\ip2region\xdb_bench.cc" />
+    <ClCompile Include="third_library\ip2region\xdb_search.cc" />
+    <ClCompile Include="third_library\loguru\loguru.cpp" />
+    <ClCompile Include="tshark_manager.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="ip2region_util.h" />
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="third_library\loguru\loguru.hpp" />
+    <ClInclude Include="tshark_datatype.h" />
+    <ClInclude Include="tshark_manager.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="midshark.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

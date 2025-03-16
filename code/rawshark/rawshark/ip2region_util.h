@@ -11,4 +11,4 @@ private:
 	static std::string parseLocation(const std::string& input);
 	static std::shared_ptr<xdb_search_t> xdbPtr;
 };
-#pragma once
+

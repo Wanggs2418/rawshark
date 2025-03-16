@@ -88,6 +88,41 @@ using SI = Sales_item;//新规定
 
 智能指针 `shared_ptr`，`C++11` 引入。避免使用 C 语言中的原生指针，可减少因为指针使用不当导致的 bug。
 
+#### 避免头文件重复包含
+
+以 `tshark_manager.h` 头文件为例，其中 `#ifndef TSHARKMANAGER_H` 和 `#define TSHARKMANAGER_H` 是 C/C++ 中常用的 **Include Guards（包含保护）**，用于防止**头文件被重复包含**。
+
+`#ifndef`、`#define` 和 `#endif` 的作用是确保头文件的内容只被编译一次，避免重复包含问题。
+
+- 当第一次包含 `TSharkManager.h` 时，`TSHARKMANAGER_H` 未定义，因此会执行 `#define TSHARKMANAGER_H` 并编译头文件内容。
+- 如果再次包含 `TSharkManager.h`，`TSHARKMANAGER_H` 已经定义，因此 `#ifndef` 条件为假，跳过整个头文件内容，避免重复编译。
+
+```cpp
+#ifndef TSHARKMANAGER_H
+#define TSHARKMANAGER_H
+
+#include "tshark_datatype.h"
+#include "rapidjson/stringbuffer.h"
+#include "ip2region_util.h"
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <set>
+#include <unordered_map>
+class TsharkManager {
+public:
+    TsharkManager(std::string workDir);
+    ~TsharkManager();
+    bool analysisFile(std::string filePath);
+private:
+    bool parseLine(std::string line, std::shared_ptr<Packet> packet); 
+private:
+    std::unordered_map<uint32_t, std::shared_ptr<Packet>> allPackets;
+};
+
+#endif //TSHARKMANAGER_H
+```
+
 
 
 ### Visual Studio 2022
@@ -119,6 +154,18 @@ using SI = Sales_item;//新规定
 **方法2：**在 VS2022 中设置一下附加路径，使得 `include` 指令可以找到对应的文件。项目 >> 属性
 
 <img src="img/03.jpg" style="zoom:60%;" />
+
+#### 用法
+
+**项目 >> 添加类：**
+
+- 生成 `.h` 文件和 `.cpp` 文件；
+- `.h` 文件用于类的定义，`.cpp` 文件用于类的实现；
+
+**项目菜单 >> 添加 >> 现有项 >> 开源库对应的位置：**
+
+- `ip2region` 中 `xdb_search.cc` 和 `xdb_bench.cc`  文件；
+- `loguru`中 `loguru.cpp` 和 `loguru.hpp` 文件；
 
 
 
@@ -566,7 +613,7 @@ bool readPacketHex(const std::string& filePath, uint32_t offset, uint32_t length
 
 `ip2region`: 是一个离线IP地址定位库和IP定位数据管理框架，10微秒级别的查询效率，提供了众多主流编程语言的 `xdb` 数据生成和查询客户端实现。
 
-**初始化**：ip2region 的工作依赖一个数据库文件 `ip2region.xdb`，包含所有 IP 地理位置数据。
+**初始化**：`ip2region` 的工作依赖一个数据库文件 `ip2region.xdb`，包含所有 IP 地理位置数据。
 
 #### 项目运行问题
 
@@ -574,7 +621,42 @@ bool readPacketHex(const std::string& filePath, uint32_t offset, uint32_t length
 
 将 `xdb_search.cc` 和 `xdb_bench.cc`  文件添加到 VS 项目中。项目菜单 >> 添加 >> 现有项 >> 找到两个文件所在的位置即可。
 
- **2.项目属性中未全局定义宏（解决 fopen 变为 fopen_s 的方法之一）**
+**2.解决 `fopen` 变 `fopen_s` **
+
+**方法1（推荐）：**
+
+```cpp
+// xdb_bench.cc 文件更改
+void xdb_bench_t::bench_test_file(const std::string& file_name) {
+    FILE* f = nullptr;
+    errno_t err = fopen_s(&f, file_name.data(), "r");
+    if (err != 0 || f == nullptr) {
+        log_exit("can't open " + file_name);
+    }
+
+    char buf[1024];
+    while (fgets(buf, sizeof(buf), f) != nullptr) {
+        bench_test_line(buf);
+    }
+
+    fclose(f); // 记得关闭文件
+}
+
+// xdb_search.cc 文件更改
+xdb_search_t::xdb_search_t(const std::string& file_name) {
+    db = nullptr;
+    vector_index = nullptr;
+    content = nullptr;
+
+    // 使用 fopen_s 打开文件
+    errno_t err = fopen_s(&db, file_name.data(), "rb");
+    if (err != 0 || db == nullptr) {
+        log_exit("can't open " + file_name);
+    }
+}
+```
+
+ **方法2：项目属性中未全局定义宏**
 
 - 如果你在代码中定义了 `#define _CRT_SECURE_NO_WARNINGS`，但项目属性中未定义该宏，可能会导致某些文件仍然触发警告。
 - 解决方法：
@@ -587,22 +669,15 @@ bool readPacketHex(const std::string& filePath, uint32_t offset, uint32_t length
 #define _CRT_SECURE_NO_WARNINGS
 #include "ip2region_util.h"
 #include <iostream>
-#include <string>
-#include <vector>
-#include <sstream> // 引入字符串流（string stream）
-#include <fstream>
-#ifdef _WIN32
-#pragma comment(lib, "ws2_32.lib") 
-#endif
 ```
 
 **3.未声明的标识符问题**
 
-方法1：将 `xdb_search.cc` 和 `xdb_bench.cc`  文件按照 `UTF-8 BOM` 格式进行保存。
+**方法1：添加 `\utf-8` 即可（推荐）。**
 
-方法2：删除两个文件中的中文注释。
+方法2：将 `xdb_search.cc` 和 `xdb_bench.cc`  文件按照 `UTF-8 BOM` 格式进行保存。
 
-方法3：添加 `\utf-8` 即可。
+方法3：删除两个文件中的中文注释。
 
 <img src="img/04.jpg" style="zoom:50%;" />
 
@@ -635,6 +710,8 @@ bool readPacketHex(const std::string& filePath, uint32_t offset, uint32_t length
 #pragma comment(lib, "ws2_32.lib")
 #endif
 ```
+
+
 
 ### 作业
 
@@ -686,11 +763,19 @@ rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
 
 把 `tshark` 相关的操作都封装到一个类中，让我们的代码更加好维护。
 
+类名：`TsharkManager`，用来封装对 `tshark` 的相关操作。
 
+#### 项目运行问题
+
+**1.无法解析的外部符号**
+
+将 `loguru.cpp` 和 `loguru.hpp`  文件添加到 VS 项目中。项目菜单 >> 添加 >> 现有项 >> 找到两个文件所在的位置即可。
 
 
 
 ### 作业
+
+> [作业参考](https://t.zsxq.com/AWsQU)
 
 
 
