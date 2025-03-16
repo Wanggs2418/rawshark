@@ -1,10 +1,9 @@
-
-#include "xdb_search.h"
+﻿#include "xdb_search.h"
 
 #ifdef _WIN32
-#include <windows.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <windows.h>
 #else
 #include <sys/time.h>
 #include <arpa/inet.h>
@@ -122,14 +121,26 @@ std::string xdb_search_t::get_region(unsigned int index, unsigned short len) {
     }
 }
 
-xdb_search_t::xdb_search_t(const std::string &file_name) {
-    db           = fopen(file_name.data(), "rb");
-    vector_index = NULL;
-    content      = NULL;
+//xdb_search_t::xdb_search_t(const std::string &file_name) {
+//    db           = fopen(file_name.data(), "rb");
+//    vector_index = NULL;
+//    content      = NULL;
+//
+//    if (db == NULL)
+//        log_exit("can't open " + file_name);
+//}
+xdb_search_t::xdb_search_t(const std::string& file_name) {
+    db = nullptr;
+    vector_index = nullptr;
+    content = nullptr;
 
-    if (db == NULL)
+    // 使用 fopen_s 打开文件
+    errno_t err = fopen_s(&db, file_name.data(), "rb");
+    if (err != 0 || db == nullptr) {
         log_exit("can't open " + file_name);
+    }
 }
+
 
 void xdb_search_t::init_file() {
 }

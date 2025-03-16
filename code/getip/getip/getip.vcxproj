@@ -21,8 +21,8 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{98fa8b3e-de6d-48e8-85c7-465e038124d2}</ProjectGuid>
-    <RootNamespace>rawshark</RootNamespace>
+    <ProjectGuid>{1954a676-522a-4b2c-90a7-d2b702fbe2f3}</ProjectGuid>
+    <RootNamespace>getip</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -104,13 +104,13 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>E:\03CS_learning\04CS_Reverse_Engineering\wireshark\rawshark\third_library;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>E:\03CS_learning\04CS_Reverse_Engineering\wireshark\rawshark\third_library;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -132,14 +132,14 @@
   <ItemGroup>
     <ClCompile Include="..\..\..\third_library\ip2region\xdb_bench.cc" />
     <ClCompile Include="..\..\..\third_library\ip2region\xdb_search.cc" />
-    <ClCompile Include="rawshark.cpp" />
+    <ClCompile Include="getip.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ip2region_util.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="rawshark.rc" />
+    <ResourceCompile Include="getip.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -1,10 +1,9 @@
-
-#include "xdb_bench.h"
+﻿#include "xdb_bench.h"
 
 #ifdef _WIN32
-#include <windows.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <windows.h>
 #else
 #include <sys/time.h>
 #include <arpa/inet.h>
@@ -126,14 +125,29 @@ void xdb_bench_t::bench_test_line(char *buf) {
         bench_test_one(d, region);
 }
 
-void xdb_bench_t::bench_test_file(const std::string &file_name) {
-    FILE *f = fopen(file_name.data(), "r");
-    if (f == NULL)
+//void xdb_bench_t::bench_test_file(const std::string &file_name) {
+//    FILE *f = fopen(file_name.data(), "r");
+//    if (f == NULL)
+//        log_exit("can't open " + file_name);
+//    char buf[1024];
+//    while (fgets(buf, sizeof(buf), f) != NULL)
+//        bench_test_line(buf);
+//}
+void xdb_bench_t::bench_test_file(const std::string& file_name) {
+    FILE* f = nullptr;
+    errno_t err = fopen_s(&f, file_name.data(), "r");
+    if (err != 0 || f == nullptr) {
         log_exit("can't open " + file_name);
+    }
+
     char buf[1024];
-    while (fgets(buf, sizeof(buf), f) != NULL)
+    while (fgets(buf, sizeof(buf), f) != nullptr) {
         bench_test_line(buf);
+    }
+
+    fclose(f); // 记得关闭文件
 }
+
 
 void xdb_bench_t::bench(const std::string &file_name) {
     sum_io_count  = 0;

@@ -15,7 +15,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="rawshark.cpp">
+    <ClCompile Include="getip.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\third_library\ip2region\xdb_bench.cc">
@@ -26,15 +26,15 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="resource.h">
+    <ClInclude Include="ip2region_util.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="ip2region_util.h">
+    <ClInclude Include="resource.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="rawshark.rc">
+    <ResourceCompile Include="getip.rc">
       <Filter>资源文件</Filter>
     </ResourceCompile>
   </ItemGroup>

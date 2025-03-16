@@ -84,6 +84,10 @@ using SI = Sales_item;//新规定
   FILE* pipe = _popen(command.c_str(), "r");
   ```
 
+#### 指针
+
+智能指针 `shared_ptr`，`C++11` 引入。避免使用 C 语言中的原生指针，可减少因为指针使用不当导致的 bug。
+
 
 
 ### Visual Studio 2022
@@ -115,6 +119,12 @@ using SI = Sales_item;//新规定
 **方法2：**在 VS2022 中设置一下附加路径，使得 `include` 指令可以找到对应的文件。项目 >> 属性
 
 <img src="img/03.jpg" style="zoom:60%;" />
+
+
+
+## 常见问题答疑
+
+> [语雀答疑](https://www.yuque.com/xuanyuanzhifeng-xofk5/hl8fig/qsnbpstok0gwq2un)
 
 
 
@@ -160,6 +170,8 @@ tshark -i 4 -Y "http" -w capture.pcap
 # 解析离线capture.pcap
 tshark -r capture.pcap
 ```
+
+
 
 ### 作业
 
@@ -235,6 +247,8 @@ tshark -r capture.pcap -q -z io,phs
 - 消息队列（MessageQueues） ：用于发送和接收数据块；
 
 本项目使用**管道**让 tshark 的输出直接传递到 C/C++ 程序进行解析。借助 `popen` 函数（`C` 语言标准库提供的函数），创建一个管道并启用一个子进程，在**父进程和子进程之间建立通信通道**。
+
+
 
 ### 作业
 
@@ -489,6 +503,16 @@ struct PacketHeader {
 };
 ```
 
+#### 注意点
+
+注意仅以 `.pcap` 后缀结尾的不一定是 `pcap` 格式。
+
+一定要以 `-F pcap` 的方式保存或另存为 `pcap` 格式。
+
+```cpp
+tshark -i 4 -c 10 -F pcap -w demo1.pcap
+```
+
 
 
 ### 作业
@@ -530,6 +554,10 @@ bool readPacketHex(const std::string& filePath, uint32_t offset, uint32_t length
 
 > [内容讲解](https://articles.zsxq.com/id_p0o2v83fjgs3.html)
 
+### 内容
+
+#### ip2region
+
 目前行业里实现这个功能主要有两个方案：
 
 1. 基于开源的数据库 [`ip2region`](https://github.com/lionsoul2014/ip2region)，并且提供了 `C++` 的开发接口，但是里面的数据有一些过时，有些IP的地理位置可能定位是错的；
@@ -538,15 +566,131 @@ bool readPacketHex(const std::string& filePath, uint32_t offset, uint32_t length
 
 `ip2region`: 是一个离线IP地址定位库和IP定位数据管理框架，10微秒级别的查询效率，提供了众多主流编程语言的 `xdb` 数据生成和查询客户端实现。
 
+**初始化**：ip2region 的工作依赖一个数据库文件 `ip2region.xdb`，包含所有 IP 地理位置数据。
+
+#### 项目运行问题
+
+**1.无法解析的外部符号**
+
+将 `xdb_search.cc` 和 `xdb_bench.cc`  文件添加到 VS 项目中。项目菜单 >> 添加 >> 现有项 >> 找到两个文件所在的位置即可。
+
+ **2.项目属性中未全局定义宏（解决 fopen 变为 fopen_s 的方法之一）**
+
+- 如果你在代码中定义了 `#define _CRT_SECURE_NO_WARNINGS`，但项目属性中未定义该宏，可能会导致某些文件仍然触发警告。
+- 解决方法：
+  1. 右键点击项目 -> 选择“属性”。
+  2. 找到“C/C++” -> “预处理器”。
+  3. 在“预处理器定义”中添加 `_CRT_SECURE_NO_WARNINGS`。
+  4. 点击“应用”并重新编译。
+
+```cpp
+#define _CRT_SECURE_NO_WARNINGS
+#include "ip2region_util.h"
+#include <iostream>
+#include <string>
+#include <vector>
+#include <sstream> // 引入字符串流（string stream）
+#include <fstream>
+#ifdef _WIN32
+#pragma comment(lib, "ws2_32.lib") 
+#endif
+```
+
+**3.未声明的标识符问题**
+
+方法1：将 `xdb_search.cc` 和 `xdb_bench.cc`  文件按照 `UTF-8 BOM` 格式进行保存。
+
+方法2：删除两个文件中的中文注释。
+
+方法3：添加 `\utf-8` 即可。
+
+<img src="img/04.jpg" style="zoom:50%;" />
+
+**4.大量重定义**
+
+将 `xdb_search.cc` 和 `xdb_bench.cc`  文件中 `winsock2.h` 头文件的包含改到 `windows.h` 的前面去。
+
+```cpp
+// xdb_search.cc
+#include "xdb_search.h"
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <windows.h>
+
+// xdb_bench.cc
+#include "xdb_bench.h"
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <windows.h>
+```
+
+**5.缺乏网络库**
+
+```cpp
+// 在main函数所在的文件内添加
+// 需要链接 ws2_32.lib 库
+#ifdef _WIN32
+#pragma comment(lib, "ws2_32.lib")
+#endif
+```
+
+### 作业
+
+> [作业参考](https://t.zsxq.com/fxnj4)
+
+```cpp
+// #include "ip2region_util.h"
+#include "ip2region/xdb_search.h"
+#include <string>
+#include <memory>
+
+class IP2RegionUtil {
+public:
+	static bool init(const std::string& xdbFilePath);
+	static std::string getIpLocation(const std::string& ip);
+
+private:
+	static std::string parseLocation(const std::string& input);
+	static std::shared_ptr<xdb_search_t> xdbPtr;
+};
+#pragma once
+```
+
+**增删说明**
+
+```cpp
+#include "ip2region_util.h"
+// 以下ip2region_util.h 类的重新实现不需要前置声明
+bool IP2RegionUtil::init(const std::string& xdbFilePath);
+std::string IP2RegionUtil::getIpLocation(const std::string& ip);
+std::string IP2RegionUtil::parseLocation(const std::string& input);
+
+
+#include "rapidjson/writer.h"
+#include "rapidjson/stringbuffer.h"
+#include "rapidjson/prettywriter.h"
+// void toJson(const Packet& packet); 中更改为PrettyWriter
+//rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);   
+```
+
+
+
+## 5. 面向对象封装与轻量级 C++ 日志库 loguru
+
+> [内容讲解](https://articles.zsxq.com/id_n6eeozgt6tw5.html)
+
+### 内容
+
+把 `tshark` 相关的操作都封装到一个类中，让我们的代码更加好维护。
 
 
 
 
 
-
-
-
-
+### 作业
 
 
 

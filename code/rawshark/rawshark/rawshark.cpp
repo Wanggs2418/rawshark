@@ -1,5 +1,14 @@
 ﻿// rawsahrk.cpp : 此文件包含 "main" 函数。程序执行将在此处开始并结束。
 //注意将开源库复制到 `include` 文件夹下： `D:\Visual Studio2022\VC\Tools\MSVC\14.43.34808\include`
+#ifdef _WIN32
+#pragma comment(lib, "ws2_32.lib") 
+#endif
+#include "ip2region_util.h"
+#include "rapidjson/document.h"
+#include "rapidjson/writer.h"
+#include "rapidjson/stringbuffer.h"
+#include "rapidjson/prettywriter.h"
+
 #include <iostream>
 #include <cstdio>
 #include <vector>
@@ -9,10 +18,6 @@
 #include <windows.h>
 #include <fstream>
 #include <stdint.h>
-#include "rapidjson/document.h"
-#include "rapidjson/writer.h"
-#include "rapidjson/stringbuffer.h"
-#include "rapidjson/prettywriter.h"
 
 //定义数据包结构体
 // 字段顺序：-e frame.number -e frame.time -e frame.cap_len -e ip.src -e ipv6.src -e ip.dst -e ipv6.dst
@@ -42,6 +47,8 @@ struct Packet {
     std::string protocol;   //协议
     std::string info;   //数据包概要信息
 	uint32_t file_offset;   //文件偏移
+	std::string src_location;   //源IP地理位置
+	std::string dst_location;   //目的IP地理位置
 };
 
 // PCAP Gloabal Header
@@ -78,6 +85,9 @@ void toString(Packet& packet);
 // 根据偏移和长度，指定文件的数据到vector中
 bool readPacketHex(const std::string& filePath, uint32_t offset, uint32_t length, std::vector<unsigned char>& buffer);
 
+
+// 智能类型指针
+std::shared_ptr<xdb_search_t> IP2RegionUtil::xdbPtr = nullptr;
 int main()
 {
     //设置控制台输出编码
@@ -101,12 +111,19 @@ int main()
 	std::vector<Packet> packets;
     char buffer[4096];
 	uint32_t file_offset = sizeof(PcapHeader);  //全局文件头偏移
-    
+    IP2RegionUtil ip2RegionUtil; // IP地址解析初始化
+    ip2RegionUtil.init("E:\\03CS_learning\\04CS_Reverse_Engineering\\wireshark\\rawshark\\third_library\\ip2region\\ip2region.xdb");
+
     //fgets标准库函数，定义在stdio.h中，从文件流中读取一行文本数据
     while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
 		Packet packet;
 
         if (parseLine(buffer, packet)) {
+
+			// 获取IP地址的地理位置信息
+            packet.src_location = ip2RegionUtil.getIpLocation(packet.src_ip);
+            packet.dst_location = ip2RegionUtil.getIpLocation(packet.dst_ip);
+
             // 计算文件偏移
             packet.file_offset = file_offset + sizeof(PacketHeader);
             file_offset += packet.cap_len + sizeof(PacketHeader);
@@ -118,6 +135,7 @@ int main()
     }
 
 	// C++11引入的新式for循环，通过auto关键子自动推断类型
+	/* 16进制输出
     for (auto& p : packets) {
         toString(p);
 
@@ -133,8 +151,8 @@ int main()
 
 		printf("\n");
     }
+    */
 
-    //std::cout << reinterpret_cast<const char*>(u8"Json如下：\t") << std::endl;
     //转化为json输出
     for (auto& p : packets) {
         toJson(p);
@@ -146,6 +164,69 @@ int main()
 }
 
 // -----------------------------------------------------
+
+//静态方法init的实现。输入：字符类型参数xdbFilePath，表示文件路径
+bool IP2RegionUtil::init(const std::string& xdbFilePath) {
+
+    xdbPtr = std::make_shared<xdb_search_t>(xdbFilePath);
+    xdbPtr->init_content(); // 调用xdbPtr的init_content方法
+    return true;
+}
+
+
+// 获取IP地址的地理位置信息
+std::string IP2RegionUtil::getIpLocation(const std::string& ip) {
+    // 如果ip的长度大于15(IPv6)，返回空字符串
+    if (ip.size() > 15) {
+        return "";
+    }
+    std::string location = xdbPtr->search(ip);
+
+    // 如果location不为空且location中不包含"invalid"，调用parseLocation方法
+    if (!location.empty() && location.find("invalid") == std::string::npos) {
+        return parseLocation(location);
+    }
+    else {
+        return "";
+    }
+}
+
+
+// 解析地理位置信息
+std::string IP2RegionUtil::parseLocation(const std::string& input) {
+    std::vector<std::string> tokens;
+    std::string token;
+    std::stringstream ss(input);
+    // 如果input中包含"内网"，返回"内网"
+    if (input.find("内网") != std::string::npos) {
+        return "内网";
+    }
+    // 以"|"为分隔符，将input分割成多个字符串
+    while (std::getline(ss, token, '|')) {
+        tokens.push_back(token);
+    }
+
+    // 如果tokens的长度大于等于4，返回拼接后的字符串
+    if (tokens.size() >= 4) {
+        std::string result;
+        // 如果tokens[0]不等于"0"，将tokens[0]拼接到result中
+        if (tokens[0].compare("0") != 0) {
+            result.append(tokens[0]);
+        }
+        if (tokens[2].compare("0") != 0) {
+            result.append("-" + tokens[2]);
+        }
+        if (tokens[3].compare("0") != 0) {
+            result.append("-" + tokens[3]);
+        }
+        return result;
+    }
+    // tokens长度小于4，返回input
+    else {
+        return input;
+    }
+}
+
 // 根据偏移和长度，指定文件的数据到vector中
 bool readPacketHex(const std::string& filePath, uint32_t offset, uint32_t length, std::vector<unsigned char> &buffer) {
 	std::ifstream file(filePath, std::ios::binary);
@@ -235,13 +316,15 @@ bool parseLine(std::string line, Packet& packet) {
 //format是C++20的新特性，用于格式化字符串
  void toString(Packet & packet) {
     std::string s = std::format(
-        "frame_number:{0}\t time:{1}\t cap_len:{8}\t src_ip:{2}\t scr_port:{3}\t dst_ip:{4}\t dst_port:{5}\t protocol:{6}\t info:{7}",
+        "frame_number:{0}\t time:{1}\t cap_len:{8}\t src_ip:{2}\t scr_port:{3}\t src_location:{4}\t dst_ip:{5}\t dst_port:{6}\t dst_location:{7}\t protocol:{8}\t info:{9}",
         packet.frame_number,
         packet.time,
         packet.src_ip,
         packet.src_port,
+        packet.src_location,
         packet.dst_ip,
 		packet.dst_port,
+		packet.dst_location,
         packet.protocol,
         packet.info,
         packet.cap_len
@@ -261,21 +344,25 @@ void toJson(const Packet& packet) {
     //添加JSON字段
 	pktObj.AddMember("frame_number", packet.frame_number, allocator);
 	pktObj.AddMember("timestamp", rapidjson::Value(packet.time.c_str(), allocator), allocator);
-	pktObj.AddMember("cap_len", packet.cap_len, allocator);
 	pktObj.AddMember("src_ip", rapidjson::Value(packet.src_ip.c_str(), allocator), allocator);
 	pktObj.AddMember("src_port", packet.src_port, allocator);
+	pktObj.AddMember("src_location", rapidjson::Value(packet.src_location.c_str(), allocator), allocator);
 	pktObj.AddMember("dst_ip", rapidjson::Value(packet.dst_ip.c_str(), allocator), allocator);
 	pktObj.AddMember("dst_port", packet.dst_port, allocator);
+	pktObj.AddMember("dst_location", rapidjson::Value(packet.dst_location.c_str(), allocator), allocator);
 	pktObj.AddMember("protocol", rapidjson::Value(packet.protocol.c_str(), allocator), allocator);
 	pktObj.AddMember("info", rapidjson::Value(packet.info.c_str(
     ), allocator), allocator);
 	pktObj.AddMember("file_offset", packet.file_offset, allocator);
-	
+    pktObj.AddMember("cap_len", packet.cap_len, allocator);
+
     //序列化为 JSON 字符串
 	rapidjson::StringBuffer buffer;
-	rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+	//rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+	rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
 	pktObj.Accept(writer);
 
     //打印JSON输出
-	std::cout << buffer.GetString() << std::endl;
+    std::cout << buffer.GetString() << std::endl;
+    std::cout << "\n" << std::endl;
 }
