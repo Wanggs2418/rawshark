@@ -134,7 +134,9 @@
     <ClCompile Include="third_library\ip2region\xdb_bench.cc" />
     <ClCompile Include="third_library\ip2region\xdb_search.cc" />
     <ClCompile Include="third_library\loguru\loguru.cpp" />
-    <ClCompile Include="tshark_manager.cpp" />
+    <ClCompile Include="tshark_manager.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/utf-8 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ip2region_util.h" />

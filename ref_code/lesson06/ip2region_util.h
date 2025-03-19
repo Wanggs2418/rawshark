@@ -1,5 +1,9 @@
-﻿#ifndef IP2REGION_UTIL_H
-#define IP2REGION_UTIL_H //防止头文件的重复包含
+//
+// Created by xuanyuan on 2024/10/17.
+//
+
+#ifndef IP2REGION_UTIL_H
+#define IP2REGION_UTIL_H
 
 #include "ip2region/xdb_search.h"
 

@@ -1,4 +1,8 @@
-﻿#include "ip2region_util.h"
+//
+// Created by xuanyuan on 2024/10/17.
+//
+
+#include "ip2region_util.h"
 #include <iostream>
 #include <string>
 #include <vector>
@@ -6,7 +10,6 @@
 
 std::shared_ptr<xdb_search_t> IP2RegionUtil::xdbPtr;
 
-// 初始化
 bool IP2RegionUtil::init(const std::string& xdbFilePath) {
 
     xdbPtr = std::make_shared<xdb_search_t>(xdbFilePath);
@@ -14,7 +17,6 @@ bool IP2RegionUtil::init(const std::string& xdbFilePath) {
     return true;
 }
 
-// 获取IP地址的地理位置
 std::string IP2RegionUtil::getIpLocation(const std::string& ip) {
 
     //if is IPv6, return empty string
@@ -22,17 +24,14 @@ std::string IP2RegionUtil::getIpLocation(const std::string& ip) {
         return "";
     }
 
-	// 如果location不为空且不包含invalid，返回location
     std::string location = xdbPtr->search(ip);
     if (!location.empty() && location.find("invalid") == std::string::npos) {
         return parseLocation(location);
-    }
-    else {
+    } else {
         return "";
     }
 }
 
-// 解析地理位置
 std::string IP2RegionUtil::parseLocation(const std::string& input) {
     std::vector<std::string> tokens;
     std::string token;
@@ -42,12 +41,10 @@ std::string IP2RegionUtil::parseLocation(const std::string& input) {
         return "内网";
     }
 
-    // 以"|"为分隔符，将input分割成多个字符串
     while (std::getline(ss, token, '|')) {
         tokens.push_back(token);
     }
 
-    // 如果tokens[0]不等于"0"，将tokens[0]拼接到result中
     if (tokens.size() >= 4) {
         std::string result;
         if (tokens[0].compare("0") != 0) {

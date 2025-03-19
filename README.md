@@ -66,7 +66,6 @@ using SI = Sales_item;//新规定
 
 ```cpp
 #include <stdint.h> // 标准整数类型定义
-
 ```
 
 #### 常用函数解读
@@ -77,7 +76,6 @@ using SI = Sales_item;//新规定
 
   ```cpp
   //1.std::stoi
-  
   
   //2.c_str()
   std::string command = tshark_loc + " -r " + pcap_file + " " + fields;
@@ -155,7 +153,7 @@ private:
 
 <img src="img/03.jpg" style="zoom:60%;" />
 
-#### 用法
+#### 开源包的用法
 
 **项目 >> 添加类：**
 
@@ -167,7 +165,11 @@ private:
 - `ip2region` 中 `xdb_search.cc` 和 `xdb_bench.cc`  文件；
 - `loguru`中 `loguru.cpp` 和 `loguru.hpp` 文件；
 
+#### 设置文件打开页面
 
+选择合适的页面布局方式即可（带三角符号）
+
+<img src="img/07.jpg" style="zoom:80%;" />
 
 ## 常见问题答疑
 
@@ -763,13 +765,151 @@ rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
 
 把 `tshark` 相关的操作都封装到一个类中，让我们的代码更加好维护。
 
-类名：`TsharkManager`，用来封装对 `tshark` 的相关操作。
+<img src="img/05.jpg" style="zoom:67%;" />
 
-#### 项目运行问题
+**`TsharkManager.h` ：定义类及相关方法**
+
+```cpp
+// 部分程序
+#ifndef TSHARKMANAGER_H
+#define TSHARKMANAGER_H
+#include <unordered_map>
+
+class TsharkManager {
+public:
+    TsharkManager(std::string workDir);
+    ~TsharkManager();
+    // 分析数据包文件
+    bool analysisFile(std::string filePath);
+    // 打印所有数据包的信息
+    void printAllPackets();
+    // 获取指定编号数据包的十六进制数据
+    bool getPacketHexData(uint32_t frameNumber, std::vector<unsigned char>& data);
+private:
+    // 解析每一行
+    bool parseLine(std::string line, std::shared_ptr<Packet> packet);
+private:
+    std::string tsharkPath;
+    // 当前分析的文件路径
+    std::string currentFilePath;
+    // 分析得到的所有数据包信息，key是数据包ID，value是数据包信息指针，方便根据编号获取指定数据包信息
+    std::unordered_map<uint32_t, std::shared_ptr<Packet>> allPackets;
+};
+#endif //TSHARKMANAGER_H
+```
+
+**`TsharkManager.cpp` ：对类中方法的实现**
+
+```cpp
+#include "tshark_manager.h"
+#include "third_library/loguru/loguru.hpp" // 使用LOG_F
+```
+
+**`ip2region.h` 对解析 IP 类的定义**
+
+**`ip2region.cpp`：对类中方法的实现**
+
+**`tshark_datatype.h`：定义结构体内容**
+
+```cpp
+// 部分程序
+#ifndef TSHARK_DATATYPE_H
+#define TSHARK_DATATYPE_H
+#include <iostream>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <vector>
+
+// PCAP Packet Header
+struct PacketHeader {
+    uint32_t ts_sec;	// 数据包捕获的时间戳(s)
+    uint32_t ts_usec;	// 数据包捕获的时间戳(μs)微秒
+    uint32_t caplen;	// 捕获的数据包长度
+    uint32_t len;		// 数据包原始长度
+};
+#endif // TSHARK_DATATYPE_H
+```
+
+**主程序**
+
+```cpp
+#include <iostream>
+#include <windows.h>
+#include "tshark_manager.h"
+#ifdef _WIN32
+#pragma comment(lib, "ws2_32.lib")
+#endif
+
+int main(int argc, char* argv[]) {
+    //设置控制台输出编码
+    SetConsoleOutputCP(CP_UTF8);
+    TsharkManager tsharkManager("E:/03CS_learning/04CS_Reverse_Engineering/wireshark/rawshark/code/midshark/midshark");
+    tsharkManager.analysisFile("C:/Users/Wanggs/demo1.pcap");
+    tsharkManager.printAllPackets();
+
+    return 0;
+}
+```
+
+#### 类封装的注意点
 
 **1.无法解析的外部符号**
 
 将 `loguru.cpp` 和 `loguru.hpp`  文件添加到 VS 项目中。项目菜单 >> 添加 >> 现有项 >> 找到两个文件所在的位置即可。
+
+**2.注意头文件的 `#ifndef` 的作用**
+
+`#ifndef`、`#define` 和 `#endif` 的作用是确保头文件的内容只被编译一次，避免重复包含问题。
+
+```cpp
+#ifndef TSHARKMANAGER_H
+#define TSHARKMANAGER_H
+
+#include "tshark_datatype.h"
+#include "rapidjson/stringbuffer.h"
+
+class TsharkManager {
+public:
+private:
+};
+#endif //TSHARKMANAGER_H
+```
+
+#### 轻量级日志框架 `loguru`
+
+一般使用 `cout` 或者 `printf` 打印一些错误信息，但有以下缺点：
+
+- **日志管理不便** ：无法自动区分日志级别，不能方便地进行日志的筛选、存储或者格式化。
+- **不支持多线程** ：在多线程环境下，直接使用可能会导致日志混乱，因为多个线程可能会同时写入日志。
+- **缺乏时间戳和文件信息** ：输出日志不会自动附带时间戳、代码文件名、行号等信息，调试时不够直观。
+- **性能问题** ：`std::cout`的性能较低，不能灵活控制日志的输出目的，比如同时写入文件和控制台。
+
+**`loguru` 是一个轻量级的 C++ 日志库，支持以下功能：**
+
+- 不同级别的日志 （INFO、WARNING、ERROR、FATAL等）
+
+  info：表示普通信息日志，fatal：表示致命错误，会终止退出。
+
+- 多线程日志安全
+
+- 带有时间戳、文件名、函数名、行号的日志格式
+
+- 自动写入日志文件
+
+- 可以动态启用/禁用日志级别
+
+- 支持颜色高亮输出
+
+`loguru` 代码库就包含两个文件：`loguru.cpp` 和 `loguru.hpp`  。在 VS 中使用时不仅要 `include`，还要把它们添加到工程中来（项目 >> 添加现有项）。
+
+#### 显示乱码问题的解决
+
+[参考方法](https://blog.csdn.net/The_upset_grass/article/details/128383070)
+
+将 VS2022 中的高级保存选项调出来，由默认保存的 GB2312 变为 UTF-8 格式，同时在 `main` 函数中设置控制台输出编码：`SetConsoleOutputCP(CP_UTF8)`。
+
+<img src="img/06.jpg" style="zoom:80%;" />
 
 
 

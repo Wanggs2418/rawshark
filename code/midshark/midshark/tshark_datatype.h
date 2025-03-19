@@ -1,4 +1,4 @@
-#ifndef TSHARK_DATATYPE_H
+ï»¿#ifndef TSHARK_DATATYPE_H
 #define TSHARK_DATATYPE_H
 
 #include <iostream>
@@ -8,12 +8,12 @@
 #include <vector>
 
 struct Packet {
-	int frame_number; // Ö¡ĞòºÅ
-	std::string time; // Ê±¼ä´Á
-	std::string src_mac; // Ô´MACµØÖ·
-	std::string dst_mac; // Ä¿µÄMACµØÖ·
-	uint32_t cap_len;   // ²¶»ñµÄÊı¾İ°ü³¤¶È
-	uint32_t len;	   // Êı¾İ°ü³¤¶È
+	int frame_number; // å¸§åºå·
+	std::string time; // æ—¶é—´æˆ³
+	std::string src_mac; // æºMACåœ°å€
+	std::string dst_mac; // ç›®çš„MACåœ°å€
+	uint32_t cap_len;   // æ•è·çš„æ•°æ®åŒ…é•¿åº¦
+	uint32_t len;	   // æ•°æ®åŒ…é•¿åº¦
     std::string src_ip;
     std::string src_location;
     uint16_t src_port;
@@ -22,26 +22,26 @@ struct Packet {
     uint16_t dst_port;
     std::string protocol;
     std::string info;
-	uint32_t file_offset;   // ÎÄ¼şÆ«ÒÆ
+	uint32_t file_offset;   // æ–‡ä»¶åç§»
 };
 
 // PCAP Gloabal Header
 struct PcapHeader {
-    uint32_t magic_number;	// ±êÊ¶ÎÄ¼ş¸ñÊ½£¬ÎŞ·ûºÅ32Î»ÕûÊı,0xa1b2c3d4´ó¶Ë
-    uint16_t version_major;	// PCAPÎÄ¼ş°æ±¾ºÅ£¬Ò»°ãÎª2.4
+    uint32_t magic_number;	// æ ‡è¯†æ–‡ä»¶æ ¼å¼ï¼Œæ— ç¬¦å·32ä½æ•´æ•°,0xa1b2c3d4å¤§ç«¯
+    uint16_t version_major;	// PCAPæ–‡ä»¶ç‰ˆæœ¬å·ï¼Œä¸€èˆ¬ä¸º2.4
     uint16_t version_minor;
-    int32_t thiszone;		// Ê±ÇøÆ«ÒÆ£¬Ò»°ãÎª0£¬ÓĞ·ûºÅ32Î»ÕûÊı
-    uint32_t sigfigs;		// Ê±¼ä´Á¾«¶È£¬Í¨³£Îª0
-    uint32_t snaplen;		// ²¶»ñÊı¾İ°ü×î´ó³¤¶È£¬Í¨³£Îª65535
-    uint32_t network;		// Á´Â·²ãÀàĞÍ£¬0x01±íÊ¾ÒÔÌ«Íø
+    int32_t thiszone;		// æ—¶åŒºåç§»ï¼Œä¸€èˆ¬ä¸º0ï¼Œæœ‰ç¬¦å·32ä½æ•´æ•°
+    uint32_t sigfigs;		// æ—¶é—´æˆ³ç²¾åº¦ï¼Œé€šå¸¸ä¸º0
+    uint32_t snaplen;		// æ•è·æ•°æ®åŒ…æœ€å¤§é•¿åº¦ï¼Œé€šå¸¸ä¸º65535
+    uint32_t network;		// é“¾è·¯å±‚ç±»å‹ï¼Œ0x01è¡¨ç¤ºä»¥å¤ªç½‘
 };
 
 // PCAP Packet Header
 struct PacketHeader {
-    uint32_t ts_sec;	// Êı¾İ°ü²¶»ñµÄÊ±¼ä´Á(s)
-    uint32_t ts_usec;	// Êı¾İ°ü²¶»ñµÄÊ±¼ä´Á(¦Ìs)Î¢Ãë
-    uint32_t caplen;	// ²¶»ñµÄÊı¾İ°ü³¤¶È
-    uint32_t len;		// Êı¾İ°üÔ­Ê¼³¤¶È
+    uint32_t ts_sec;	// æ•°æ®åŒ…æ•è·çš„æ—¶é—´æˆ³(s)
+    uint32_t ts_usec;	// æ•°æ®åŒ…æ•è·çš„æ—¶é—´æˆ³(Î¼s)å¾®ç§’
+    uint32_t caplen;	// æ•è·çš„æ•°æ®åŒ…é•¿åº¦
+    uint32_t len;		// æ•°æ®åŒ…åŸå§‹é•¿åº¦
 };
 
 #endif // TSHARK_DATATYPE_H

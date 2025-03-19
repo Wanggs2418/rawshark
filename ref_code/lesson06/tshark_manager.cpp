@@ -1,6 +1,10 @@
-﻿#include "tshark_manager.h"
-#include "third_library/loguru/loguru.hpp" // 使用LOG_F
-#include <iomanip> // 使用std::put_time
+﻿//
+// Created by xuanyuan on 2025/2/16.
+//
+
+#include "tshark_manager.h"
+#include "third_library/loguru/loguru.hpp"
+
 
 #ifdef _WIN32
 #include <windows.h>
@@ -16,7 +20,7 @@
 #endif
 
 TsharkManager::TsharkManager(std::string workDir) {
-    this->tsharkPath = "E:/Wireshark4.2.6/Wireshark/tshark";
+    this->tsharkPath = "D:/wireshark/tshark";
     std::string xdbPath = workDir + "/third_library/ip2region/ip2region.xdb";
     IP2RegionUtil::init(xdbPath);
 }
@@ -25,7 +29,6 @@ TsharkManager::~TsharkManager() {
 
 }
 
-// 分析数据包文件
 bool TsharkManager::analysisFile(std::string filePath) {
 
     std::vector<std::string> tsharkArgs = {
@@ -72,7 +75,7 @@ bool TsharkManager::analysisFile(std::string filePath) {
             LOG_F(ERROR, buffer);
             assert(false); // 增加错误断言，及时发现错误
         }
-        // 计算报文的偏移
+        // 计算当前报文的偏移，然后记录在Packet对象中
         packet->file_offset = file_offset + sizeof(PacketHeader);
 
         // 更新偏移游标
@@ -87,43 +90,19 @@ bool TsharkManager::analysisFile(std::string filePath) {
     }
 
     pclose(pipe);
+
+    // 记录当前分析的文件路径
     currentFilePath = filePath;
-	LOG_F(INFO, "分析完成，数据包总数：%zu", allPackets.size()); // zu-无符号整数
+
+    LOG_F(INFO, "分析完成，数据包总数：%zu", allPackets.size());
+
     return true;
-}
-
-// 进行时间戳格式化
-std::string formatted_timestamp(std::string timestamp) {
-    size_t dot_pos = timestamp.find('.');
-    if (dot_pos == std::string::npos) {
-        return "";
-    }
-    std::string seconds_part = timestamp.substr(0, dot_pos);
-    std::string nanoseconds_part = timestamp.substr(dot_pos + 1);
-
-    // 转换为整数
-    time_t seconds = std::stoll(seconds_part);
-    long nanoseconds = std::stoll(nanoseconds_part);
-    int microseconds = nanoseconds / 1000;
-
-    // 转换为 std::tm 结构
-    std::tm tm_time;
-#ifdef _WIN32
-    // Windows下使用 gmtime_s(struct tm *_Tm, const time_t *_Time)
-    gmtime_s(&tm_time, &seconds);
-#else
-    // Linux下使用 gmtime_r(const time_t *_Time, struct tm *_Tm)
-    gmtime_r(&seconds, &tm_time);
-#endif
-    std::ostringstream oss;
-    oss << std::put_time(&tm_time, "%Y-%m-%d %H:%M:%S")
-        << "." << std::setw(6) << std::setfill('0') << microseconds;
-    return oss.str();
 }
 
 void TsharkManager::printAllPackets() {
 
     for (auto pair : allPackets) {
+
         std::shared_ptr<Packet> packet = pair.second;
 
         // 构建JSON对象
@@ -149,19 +128,16 @@ void TsharkManager::printAllPackets() {
 
         // 序列化为 JSON 字符串
         rapidjson::StringBuffer buffer;
-        rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
+        rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
         pktObj.Accept(writer);
 
         // 打印JSON输出
         std::cout << buffer.GetString() << std::endl;
-        std::cout << "\n" << std::endl;
     }
 
 }
 
 bool TsharkManager::parseLine(std::string line, std::shared_ptr<Packet> packet) {
-
-    // 去掉行尾的换行符
     if (line.back() == '\n') {
         line.pop_back();
     }
@@ -169,7 +145,6 @@ bool TsharkManager::parseLine(std::string line, std::shared_ptr<Packet> packet) 
     std::string field;
     std::vector<std::string> fields;
 
-    // 实现字符串拆分,避免字段数量不足导致数据包无法对齐
     size_t start = 0, end;
     while ((end = line.find('\t', start)) != std::string::npos) {
         fields.push_back(line.substr(start, end - start));
@@ -177,9 +152,28 @@ bool TsharkManager::parseLine(std::string line, std::shared_ptr<Packet> packet) 
     }
     fields.push_back(line.substr(start)); // 添加最后一个子串
 
+
+    // 字段顺序：
+    // 0: frame.number
+    // 1: frame.time_epoch
+    // 2: frame.len
+    // 3: frame.cap_len
+    // 4: eth.src
+    // 5: eth.dst
+    // 6: ip.src
+    // 7: ipv6.src
+    // 8: ip.dst
+    // 9: ipv6.dst
+    // 10: tcp.srcport
+    // 11: udp.srcport
+    // 12: tcp.dstport
+    // 13: udp.dstport
+    // 14: _ws.col.Protocol
+    // 15: _ws.col.Info
+
     if (fields.size() >= 16) {
         packet->frame_number = std::stoi(fields[0]);
-        packet->time = formatted_timestamp(fields[1]);
+        packet->time = fields[1];
         packet->len = std::stoi(fields[2]);
         packet->cap_len = std::stoi(fields[3]);
         packet->src_mac = fields[4];
@@ -198,9 +192,7 @@ bool TsharkManager::parseLine(std::string line, std::shared_ptr<Packet> packet) 
 
         return true;
     }
-    else
-    {
-        std::cerr << "parse line failed" << std::endl;
+    else {
         return false;
     }
 }
@@ -225,13 +217,68 @@ bool TsharkManager::getPacketHexData(uint32_t frameNumber, std::vector<unsigned 
     // 移动到指定偏移位置
     file.seekg(packet->file_offset, std::ios::beg);
     if (!file) {
-        std::cerr << "seekg failed" << std::endl;
+        std::cerr << "seekg 失败，偏移可能超出文件大小" << std::endl;
         return false;
     }
-    
+
     // 读取数据
     data.resize(packet->cap_len);
     file.read(reinterpret_cast<char*>(data.data()), packet->cap_len);
 
     return true;
+}
+
+std::vector<AdapterInfo> TsharkManager::getNetworkAdapters() {
+    // 需要过滤掉的虚拟网卡
+    std::set<std::string> specialInterfaces = { "sshdump", "ciscodump", "udpdump", "randpkt" };
+    std::vector<AdapterInfo> interfaces;
+    char buffer[256] = { 0 };
+    std::string result;
+
+    // 启动tshark -D命令
+    std::string cmd = tsharkPath + " -D";
+    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
+    if (!pipe) {
+        throw std::runtime_error("Failed to run tshark command.");
+    }
+
+    // 读取tshark输出
+    while (fgets(buffer, 256, pipe.get()) != nullptr) {
+        result += buffer;
+    }
+
+    // 解析tshark的输出，输出格式为：
+    // 1. \Device\NPF_{xxxxxx} (网卡描述)
+    std::istringstream stream(result);
+    std::string line;
+    int index = 1;
+    while (std::getline(stream, line)) {
+        int startPos = line.find(' ');
+        if (startPos != std::string::npos) {
+            int endPos = line.find(' ', startPos + 1);
+            std::string interfaceName;
+            if (endPos != std::string::npos) {
+                interfaceName = line.substr(startPos + 1, endPos - startPos - 1);
+            }
+            else {
+                interfaceName = line.substr(startPos + 1);
+            }
+
+            // 滤掉特殊网卡
+            if (specialInterfaces.find(interfaceName) != specialInterfaces.end()) {
+                continue;
+            }
+
+            AdapterInfo adapterInfo;
+            adapterInfo.name = interfaceName;
+            adapterInfo.id = index++;
+            if (line.find("(") != std::string::npos && line.find(")") != std::string::npos) {
+                adapterInfo.remark = line.substr(line.find("(") + 1, line.find(")") - line.find("(") - 1);
+            }
+
+            interfaces.push_back(adapterInfo);
+        }
+    }
+
+    return interfaces;
 }

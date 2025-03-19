@@ -1,4 +1,8 @@
-﻿#ifndef TSHARKMANAGER_H
+//
+// Created by xuanyuan on 2025/2/16.
+//
+
+#ifndef TSHARKMANAGER_H
 #define TSHARKMANAGER_H
 #include "tshark_datatype.h"
 #include "rapidjson/document.h"
@@ -33,6 +37,9 @@ public:
     // 获取指定编号数据包的十六进制数据
     bool getPacketHexData(uint32_t frameNumber, std::vector<unsigned char>& data);
 
+    // 枚举网卡列表
+    std::vector<AdapterInfo> getNetworkAdapters();
+
 private:
     // 解析每一行
     bool parseLine(std::string line, std::shared_ptr<Packet> packet);
@@ -47,5 +54,6 @@ private:
     // 分析得到的所有数据包信息，key是数据包ID，value是数据包信息指针，方便根据编号获取指定数据包信息
     std::unordered_map<uint32_t, std::shared_ptr<Packet>> allPackets;
 };
+
 
 #endif //TSHARKMANAGER_H
